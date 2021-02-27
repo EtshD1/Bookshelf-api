@@ -1,6 +1,14 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_cors.decorator import cross_origin
+from models import db, Book
+from flask_migrate import Migrate
+
+app = Flask(__name__)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://etsh:3894@127.0.0.1:5432/libraryAPI'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = 'False'
+db.init_app(app)
+migrate = Migrate(app, db)
 
 
 def create_app(test_config=None):
@@ -20,9 +28,20 @@ def create_app(test_config=None):
     def index():
         return jsonify({"message": "hello world!"})
 
-    @app.route('/smiley')
-    @cross_origin
-    def smile():
-        return ":)"
+    @app.route('/books')
+    def get_books():
+        page = request.args.get('page', 1, type=int)
+        start = (page-1)*10
+        books = Book.query.all()
+
+        limit = start+10
+        if start+10 > len(books):
+            limit = len(books)
+
+        bookList = [book.to_dict() for book in books]
+        return jsonify({
+            'success': True,
+            'books': bookList
+        })
 
     return app
