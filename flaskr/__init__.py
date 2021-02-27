@@ -7,6 +7,26 @@ from flask_migrate import Migrate
 __BOOKS_PER_SHELF__ = 5
 
 
+def paginate_books(request, selection):
+    page = request.args.get('page', 1, type=int)
+    start = (page-1) * __BOOKS_PER_SHELF__
+    limit = start + __BOOKS_PER_SHELF__
+
+    if limit > len(selection):
+        limit = len(selection)
+
+    bookList = []
+    for book in range(start, limit):
+        bookList.append(selection[book].to_dict())
+
+    if len(bookList) == 0:
+        abort(404)
+
+    db.session.close()
+
+    return bookList
+
+
 def create_app(test_config=None):
     app = Flask(__name__)
     app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://etsh:3894@127.0.0.1:5432/libraryapi'
@@ -30,25 +50,59 @@ def create_app(test_config=None):
 
     @app.route('/books')
     def get_books():
-        page = request.args.get('page', 1, type=int)
-        start = (page-1) * __BOOKS_PER_SHELF__
-        books = Book.query.all()
+        books = Book.query.order_by(Book.id).all()
 
-        limit = start + __BOOKS_PER_SHELF__
-        if limit > len(books):
-            limit = len(books)
+        bookList = paginate_books(request, books)
 
-        bookList = []
-        for book in range(start, limit):
-            bookList.append(books[book].to_dict())
+        db.session.close()
 
-        if len(bookList) == 0:
+        return jsonify({'success': True, 'total_books': len(bookList), 'books': bookList})
+
+    @app.route('/books/<int:book_id>')
+    def view_book(book_id):
+        query = Book.query.get(book_id)
+        if query:
+            book = query.to_dict()
+            db.session.close()
+            return jsonify({
+                'book': book,
+                'success': True,
+            })
+        else:
             abort(404)
+
+    @app.route('/books/<int:book_id>', methods=['DELETE'])
+    def delete_book(book_id):
+        book = Book.query.get(book_id)
+
+        if book:
+            book.delete()
+        else:
+            abort(404)
+
+        bookQuery = Book.query.all()
+        bookList = paginate_books(request, bookQuery)
+        db.session.close()
 
         return jsonify({
             'success': True,
+            'deleted_book_id': book_id,
             'books': bookList,
-            'total_books': len(books)
+            'total_books': len(bookList)
         })
+
+    @app.route('/books', methods=['POST'])
+    def create_book():
+        body = request.get_json()
+
+        newBook = Book(
+            name=body.get('name', None),
+            author=body.get('author', None)
+        )
+        newBook.insert()
+        book = newBook.to_dict()
+        db.session.close()
+
+        return jsonify({"success": True, 'book': book})
 
     return app
