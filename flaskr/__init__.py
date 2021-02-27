@@ -105,4 +105,12 @@ def create_app(test_config=None):
 
         return jsonify({"success": True, 'book': book})
 
+    @app.errorhandler(404)
+    def not_found(error):
+        return jsonify({
+            "success": False,
+            "error": 404,
+            "message": "Not found"
+        }), 404
+
     return app
