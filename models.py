@@ -1,5 +1,4 @@
 from flask_sqlalchemy import SQLAlchemy
-from flask import jsonify
 
 db = SQLAlchemy()
 
@@ -25,9 +24,9 @@ class Book(db.Model):
         db.session.commit()
         db.session.close()
 
-    def getJson(self):
-        return jsonify({
+    def to_dict(self):
+        return {
             'id': self.id,
             'name': self.name,
             'author': self.author
-        })
+        }
