@@ -107,6 +107,7 @@ def create_app(test_config=None):
         if 'name' in body:
             book.name = body.get('name')
             book.update()
+            contentFilled = True
 
         bookDict = book.to_dict()
         db.session.close()
