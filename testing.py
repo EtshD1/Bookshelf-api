@@ -62,6 +62,15 @@ class APITestCase(unittest.TestCase):
         self.assertEqual(data['book']['name'], jsonData['name'])
         self.assertEqual(data['book']['author'], jsonData['author'])
 
+    def test_delete_book(self):
+        id = 5
+        res = self.client().delete(f'/books/{id}')
+        data = json.loads(res.data)
+        self.assertEqual(res.status_code, 200)
+        self.assertTrue(data['total_books'])
+        self.assertEqual(data['deleted_book_id'], id)
+        self.assertEqual(data['success'], True)
+
 
 # Make the tests conveniently executable
 if __name__ == '__main__':
