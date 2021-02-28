@@ -91,6 +91,36 @@ def create_app(test_config=None):
             'total_books': len(bookList)
         })
 
+    @app.route('/books/<int:book_id>', methods=['PATCH'])
+    def update_book(book_id):
+        body = request.get_json()
+        book = Book.query.get(book_id)
+        if book is None:
+            abort(404)
+
+        contentFilled = False
+        if 'author' in body:
+            book.author = body.get('author')
+            book.update()
+            contentFilled = True
+
+        if 'name' in body:
+            book.name = int(body.get('name'))
+            book.update()
+
+        bookDict = book.to_dict()
+        db.session.close()
+        if contentFilled:
+            return jsonify({
+                'success': True,
+                'book': bookDict
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'book': bookDict
+            }), 400
+
     @app.route('/books', methods=['POST'])
     def create_book():
         body = request.get_json()
