@@ -1,5 +1,5 @@
 # Bookshelf API
-This is a small RESTful api with testing unit that can some book info.
+This is a small RESTful api with testing unit that can some book info with flask used as the backend framework.
 ## Running
 You can use `python-dotenv` package to use the `.env` file, install using `pip3 install python-dotenv`, then run `flask run`. API uses SQLAlchemy with the dialect for postgeSQL.
 
