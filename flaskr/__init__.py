@@ -92,7 +92,7 @@ def create_app(test_config=None):
         })
 
     @app.route('/books/<int:book_id>', methods=['PATCH'])
-    def update_book(book_id):
+    def patch_book(book_id):
         body = request.get_json()
         book = Book.query.get(book_id)
         if book is None:
@@ -122,6 +122,38 @@ def create_app(test_config=None):
                 'book': bookDict
             }), 400
 
+    @app.route('/books/<int:book_id>', methods=['PUT'])
+    def put_book(book_id):
+        body = request.get_json()
+        book = Book.query.get(book_id)
+        if book is None:
+            abort(404)
+
+        author = body.get('author')
+        if author is None:
+            return jsonify({
+                'success': False,
+                'message': 'Please supply a "Author" in the body'
+            }), 400
+
+        name = body.get('name')
+        if name is None:
+            return jsonify({
+                'success': False,
+                'message': 'Please supply a "Name" in the body'
+            }), 400
+
+        book.author = body.get('author')
+        book.name = body.get('name')
+        book.update()
+
+        bookDict = book.to_dict()
+        db.session.close()
+        return jsonify({
+            'success': True,
+            'book': bookDict
+        })
+
     @app.route('/books', methods=['POST'])
     def create_book():
         body = request.get_json()
@@ -143,5 +175,21 @@ def create_app(test_config=None):
             "error": 404,
             "message": "Not found"
         }), 404
+
+    @app.errorhandler(400)
+    def bad_request(error):
+        return jsonify({
+            "success": False,
+            "error": 400,
+            "message": "Bad Request"
+        }), 400
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        return jsonify({
+            "success": False,
+            "error": 500,
+            "message": "Internal Server Error. Please try again later"
+        }), 500
 
     return app
