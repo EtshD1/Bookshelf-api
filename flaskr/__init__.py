@@ -105,7 +105,7 @@ def create_app(test_config=None):
             contentFilled = True
 
         if 'name' in body:
-            book.name = int(body.get('name'))
+            book.name = body.get('name')
             book.update()
 
         bookDict = book.to_dict()
