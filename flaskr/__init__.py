@@ -1,3 +1,4 @@
+from re import error
 from flask import Flask, jsonify, request, abort
 from flask_cors import CORS
 from flask_cors.decorator import cross_origin
@@ -50,123 +51,160 @@ def create_app(test_config=None):
 
     @app.route('/books')
     def get_books():
-        books = Book.query.order_by(Book.id).all()
+        try:
+            books = Book.query.order_by(Book.id).all()
+            bookList = paginate_books(request, books)
 
-        bookList = paginate_books(request, books)
-
-        db.session.close()
-
-        return jsonify({'success': True, 'total_books': len(bookList), 'books': bookList})
+            return jsonify({'success': True, 'total_books': len(bookList), 'books': bookList})
+        except error:
+            print(error)
+            db.session.rollback()
+            abort(500)
+        finally:
+            db.session.close()
 
     @app.route('/books/<int:book_id>')
     def view_book(book_id):
-        query = Book.query.get(book_id)
-        if query:
-            book = query.to_dict()
+        try:
+            query = Book.query.get(book_id)
+            if query:
+                book = query.to_dict()
+                return jsonify({
+                    'book': book,
+                    'success': True,
+                })
+            else:
+                abort(404)
+        except error:
+            print(error)
+            db.session.rollback()
+            abort(500)
+        finally:
             db.session.close()
-            return jsonify({
-                'book': book,
-                'success': True,
-            })
-        else:
-            abort(404)
 
     @app.route('/books/<int:book_id>', methods=['DELETE'])
     def delete_book(book_id):
-        book = Book.query.get(book_id)
+        try:
+            book = Book.query.get(book_id)
 
-        if book:
-            book.delete()
-        else:
-            abort(404)
+            if book:
+                book.delete()
+            else:
+                abort(404)
 
-        bookQuery = Book.query.all()
-        bookList = paginate_books(request, bookQuery)
-        db.session.close()
+            bookQuery = Book.query.all()
+            bookList = paginate_books(request, bookQuery)
 
-        return jsonify({
-            'success': True,
-            'deleted_book_id': book_id,
-            'books': bookList,
-            'total_books': len(bookList)
-        })
+            return jsonify({
+                'success': True,
+                'deleted_book_id': book_id,
+                'books': bookList,
+                'total_books': len(bookList)
+            })
+        except error:
+            print(error)
+            db.session.rollback()
+            abort(500)
+        finally:
+            db.session.close()
 
     @app.route('/books/<int:book_id>', methods=['PATCH'])
     def patch_book(book_id):
-        body = request.get_json()
-        book = Book.query.get(book_id)
-        if book is None:
-            abort(404)
+        try:
+            body = request.get_json()
+            book = Book.query.get(book_id)
+            if book is None:
+                abort(404)
 
-        contentFilled = False
-        if 'author' in body:
+            contentFilled = False
+            if 'author' in body:
+                book.author = body.get('author')
+                book.update()
+                contentFilled = True
+
+            if 'name' in body:
+                book.name = body.get('name')
+                book.update()
+                contentFilled = True
+
+            bookDict = book.to_dict()
+            db.session.close()
+            if contentFilled:
+                return jsonify({
+                    'success': True,
+                    'book': bookDict
+                })
+            else:
+                return jsonify({
+                    'success': False,
+                    'book': bookDict
+                }), 400
+        except error:
+            print(error)
+            db.session.rollback()
+            abort(500)
+        finally:
+            db.session.close()
+
+    @app.route('/books/<int:book_id>', methods=['PUT'])
+    def put_book(book_id):
+        try:
+            body = request.get_json()
+            book = Book.query.get(book_id)
+            if book is None:
+                abort(404)
+
+            author = body.get('author')
+            if author is None:
+                return jsonify({
+                    'success': False,
+                    'message': 'Please supply a "Author" in the body'
+                }), 400
+
+            name = body.get('name')
+            if name is None:
+                return jsonify({
+                    'success': False,
+                    'message': 'Please supply a "Name" in the body'
+                }), 400
+
             book.author = body.get('author')
-            book.update()
-            contentFilled = True
-
-        if 'name' in body:
             book.name = body.get('name')
             book.update()
-            contentFilled = True
 
-        bookDict = book.to_dict()
-        db.session.close()
-        if contentFilled:
+            bookDict = book.to_dict()
+            db.session.close()
             return jsonify({
                 'success': True,
                 'book': bookDict
             })
-        else:
-            return jsonify({
-                'success': False,
-                'book': bookDict
-            }), 400
-
-    @app.route('/books/<int:book_id>', methods=['PUT'])
-    def put_book(book_id):
-        body = request.get_json()
-        book = Book.query.get(book_id)
-        if book is None:
-            abort(404)
-
-        author = body.get('author')
-        if author is None:
-            return jsonify({
-                'success': False,
-                'message': 'Please supply a "Author" in the body'
-            }), 400
-
-        name = body.get('name')
-        if name is None:
-            return jsonify({
-                'success': False,
-                'message': 'Please supply a "Name" in the body'
-            }), 400
-
-        book.author = body.get('author')
-        book.name = body.get('name')
-        book.update()
-
-        bookDict = book.to_dict()
-        db.session.close()
-        return jsonify({
-            'success': True,
-            'book': bookDict
-        })
+        except error:
+            print(error)
+            db.session.rollback()
+            abort(500)
+        finally:
+            db.session.close()
 
     @app.route('/books', methods=['POST'])
     def create_book():
-        body = request.get_json()
+        try:
+            body = request.get_json()
 
-        newBook = Book(
-            name=body.get('name', None),
-            author=body.get('author', None)
-        )
-        newBook.insert()
-        book = newBook.to_dict()
-        db.session.close()
+            newBook = Book(
+                name=body.get('name', None),
+                author=body.get('author', None)
+            )
+            newBook.insert()
+            book = newBook.to_dict()
+            db.session.close()
 
-        return jsonify({"success": True, 'book': book})
+            return jsonify({"success": True, 'book': book})
+        except error:
+            print(error)
+            db.session.rollback()
+            abort(500)
+        finally:
+            db.session.close()
 
     @app.errorhandler(404)
     def not_found(error):
