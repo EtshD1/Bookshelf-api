@@ -28,4 +28,15 @@ PATCH: Updates specified book from databse. Should have 'author' and/or 'name' i
 PUT: Replaces specified book from databse. Should have 'author' and 'name' in the request's body. Returns replaced book.
 
 
-
+## Error Handling
+Errors comes in a JSON format like so:
+```json
+{
+  "success": false,
+  "error": 404,
+  "message": "Not found"
+}
+```
+- `success` is passed with every request to state if the request is successful or not.
+- `error` is the status code for the response.
+- `message` is a more detailed info about the status code.
